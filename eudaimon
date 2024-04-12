@@ -1,0 +1,64 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+'''
+################################################################################
+#                                                                              #
+# eudaimon                                                                     #
+#                                                                              #
+################################################################################
+#                                                                              #
+# LICENCE INFORMATION                                                          #
+#                                                                              #
+# This program is an interface to OpenAI models via the OpenAI API.            #
+#                                                                              #
+# copyright (C) 2024 William Breaden Madden                                    #
+#                                                                              #
+# This software is released under the terms of the GNU General Public License  #
+# version 3 (GPLv3).                                                           #
+#                                                                              #
+# This program is free software: you can redistribute it and/or modify it      #
+# under the terms of the GNU General Public License as published by the Free   #
+# Software Foundation, either version 3 of the License, or (at your option)    #
+# any later version.                                                           #
+#                                                                              #
+# This program is distributed in the hope that it will be useful, but WITHOUT  #
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or        #
+# FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for     #
+# more details.                                                                #
+#                                                                              #
+# For a copy of the GNU General Public License, see                            #
+# <http://www.gnu.org/licenses>.                                               #
+#                                                                              #
+################################################################################
+'''
+
+import sys
+
+from openai import OpenAI
+
+__version__ = '2024-04-12T2148Z'
+
+def main():
+    try:
+        text_input = ' '.join(sys.argv[1:])
+    except:
+        print('input error')
+        sys.exit()
+    try:
+        client = OpenAI()
+    except:
+        print('API access error -- is environment variable OPENAI_API_KEY set?')
+        sys.exit()
+    try:
+        completion = client.chat.completions.create(
+            model='gpt-4-turbo',
+            messages=[{'role': 'user', 'content': text_input}]
+        )
+    except:
+        print('model access error, usage error or other error')
+        sys.exit()
+    print(completion.choices[0].message.content)
+
+if __name__ == '__main__':
+    main()
