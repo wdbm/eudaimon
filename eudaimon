@@ -33,31 +33,35 @@
 ################################################################################
 '''
 
+import os
 import sys
 
 from openai import OpenAI
 
-__version__ = '2024-04-12T2148Z'
+__version__ = '2024-04-13T2324Z'
 
 def main():
-    try:
-        text_input = ' '.join(sys.argv[1:])
-    except:
-        print('input error')
-        sys.exit()
+    api_key = os.getenv('OPENAI_API_KEY')
+    if not api_key:
+        print('OPENAI_API_KEY environment variable not set')
+        sys.exit(1)
+    text_input = ' '.join(sys.argv[1:])
+    if not text_input:
+        print('no input provided')
+        sys.exit(1)
     try:
         client = OpenAI()
-    except:
-        print('API access error -- is environment variable OPENAI_API_KEY set?')
-        sys.exit()
+    except Exception as e:
+        print(f'error: {str(e)}')
+        sys.exit(1)
     try:
         completion = client.chat.completions.create(
             model='gpt-4-turbo',
             messages=[{'role': 'user', 'content': text_input}]
         )
-    except:
-        print('model access error, usage error or other error')
-        sys.exit()
+    except Exception as e:
+        print(f'error: {str(e)}')
+        sys.exit(1)
     print(completion.choices[0].message.content)
 
 if __name__ == '__main__':
