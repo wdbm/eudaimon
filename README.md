@@ -20,7 +20,7 @@ The script `eudaimon` is a simple interface to an OpenAI model via the OpenAI AP
 
 ## eudaimon_transcribe
 
-The script `eudaimon` uses an offline Whisper model to transcribe spoken words live (and an OpenAI key is not needed). Check the script options with `eudaimon_transcribe --help`. It is assumed that the environment variable `DEFAULT_MIC` is set appropriately. Using `eudaimon_transcribe --list_microphones` may assist with setting this variable. On the first use of a selected Whisper model, it may be that the system downloads the model before transcription is possible. Press `Ctrl` + `C` to exit.
+The script `eudaimon_transcribe` uses an offline Whisper model to transcribe spoken words live (and an OpenAI key is not needed). Check the script options with `eudaimon_transcribe --help`. It is assumed that the environment variable `DEFAULT_MIC` is set appropriately. Using `eudaimon_transcribe --list_microphones` may assist with setting this variable. On the first use of a selected Whisper model, it may be that the system downloads the model before transcription is possible. Press `Ctrl` + `C` to exit.
 
 In order to avoid excessive terminal output related to system audio, it may be appropriate to run the script with shell redirection like the following:
 
