@@ -4,11 +4,11 @@
 
 ```Bash
 pip3 install                                 \
+    numpy                                    \
     openai                                   \
     pyaudio                                  \
     SpeechRecognition                        \
     torch                                    \
-    numpy                                    \
     git+https://github.com/openai/whisper.git
 ```
 
