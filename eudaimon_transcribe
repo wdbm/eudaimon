@@ -1,0 +1,159 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+'''
+################################################################################
+#                                                                              #
+# eudaimon_transcribe                                                          #
+#                                                                              #
+################################################################################
+#                                                                              #
+# LICENCE INFORMATION                                                          #
+#                                                                              #
+# This program uses Whisper models to transcribe spoken words live.            #
+#                                                                              #
+# copyright (C) 2024 William Breaden Madden                                    #
+#                                                                              #
+# This software is released under the terms of the GNU General Public License  #
+# version 3 (GPLv3).                                                           #
+#                                                                              #
+# This program is free software: you can redistribute it and/or modify it      #
+# under the terms of the GNU General Public License as published by the Free   #
+# Software Foundation, either version 3 of the License, or (at your option)    #
+# any later version.                                                           #
+#                                                                              #
+# This program is distributed in the hope that it will be useful, but WITHOUT  #
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or        #
+# FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for     #
+# more details.                                                                #
+#                                                                              #
+# For a copy of the GNU General Public License, see                            #
+# <http://www.gnu.org/licenses>.                                               #
+#                                                                              #
+################################################################################
+
+usage:
+    program [options]
+
+options:
+    -h, --help           display help message
+    --model=SIZE         Whisper model: tiny/base/small/medium/large
+                         [default: medium]
+    --non_English        non-English
+    --list_microphones   list detected microphone hardware device names and then exit
+'''
+
+from datetime import datetime, timedelta
+import docopt
+import os
+from queue import Queue
+import textwrap
+import time
+import sys
+
+import numpy as np
+import speech_recognition as sr
+import torch
+import whisper
+
+__version__ = '2024-04-15T0253Z'
+
+def main(options=docopt.docopt(__doc__)):
+    model = options['--model']
+    non_English = options.get("--non_English", False)
+    list_microphones = options.get("--list_microphones", False)
+    if model != 'large' and not non_English:
+        model = model + '.en'
+
+    default_microphone = os.getenv('DEFAULT_MIC')
+    if not default_microphone:
+        print('DEFAULT_MIC environment variable not set')
+        sys.exit(1)
+
+    audio_model = whisper.load_model(model)
+    recorder = sr.Recognizer()
+    recorder.energy_threshold = 1000
+    recorder.dynamic_energy_threshold = False
+
+    if list_microphones:
+        print('\nmicrophones found:')
+        for index, name in enumerate(sr.Microphone.list_microphone_names()):
+            print(f'device name: "{name}"')
+        print()
+        sys.exit(0)
+
+    source = None
+    for index, name in enumerate(sr.Microphone.list_microphone_names()):
+        if default_microphone in name:
+            try:
+                source = sr.Microphone(sample_rate=16000, device_index=index)
+            except Exception as e:
+                print(f'error: {str(e)}')
+                sys.exit(1)
+            break
+    if source is None:
+        print(f"no microphone matching '{default_microphone}' found")
+        sys.exit(1)
+    with source:
+        recorder.adjust_for_ambient_noise(source)
+
+    # Initialise a thread-safe queue for audio data from a recording thread.
+    data_queue = Queue()
+
+    def record_callback(_, audio:sr.AudioData) -> None:
+        '''
+        Receive audio data when a recording is finished and push it to an thread-safe queue.
+        '''
+        data = audio.get_raw_data()
+        data_queue.put(data)
+
+    # Start a background thread to save audio to the callback function.
+    recorder.listen_in_background(source, record_callback, phrase_time_limit=2)
+
+    transcription = ['']
+    phrase_time = None
+
+    while True:
+        try:
+            # Retrieve any audio data stored in the queue.
+            if not data_queue.empty():
+                phrase_complete = False
+                # Is the phrase complete?
+                now = datetime.utcnow()
+                if phrase_time:
+                    phrase_complete = True if now - phrase_time > timedelta(seconds=3) else False
+                phrase_time = now
+                # Join the audio data in the queue and then clear the audio buffer queue.
+                audio_data = b''.join(data_queue.queue)
+                data_queue.queue.clear()
+                # Convert the audio data to a format which can be used directly by the model.
+                # Specifically, convert 16 bit integer data to 32 bit floating point data and
+                # clamp the frequency to a PCM wavelength compatible default maximum of 32768 Hz.
+                audio_np = np.frombuffer(audio_data, dtype=np.int16).astype(np.float32) / 32768.0
+                # Get the phrase transcription.
+                result = audio_model.transcribe(audio_np, fp16=torch.cuda.is_available())
+                text = result['text'].strip()
+                # Add the phrase transcription to the full transcription.
+                if phrase_complete:
+                    transcription.append(text)
+                else:
+                    transcription[-1] = text
+                # Clear the terminal and update the full transcription displayed.
+                os.system('clear')
+                for line in transcription:
+                    #print(line)
+                    terminal_width = os.get_terminal_size()[0]
+                    print(textwrap.fill(line, terminal_width))
+                # Flush stdout.
+                print('', end='', flush=True)
+            else:
+                time.sleep(0.1)
+        except KeyboardInterrupt:
+            break
+
+    print('\n\ntranscription:\n')
+    for line in transcription:
+        print(line)
+
+if __name__ == '__main__':
+    main()
