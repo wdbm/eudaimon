@@ -6,7 +6,9 @@
 pip3 install                                 \
     numpy                                    \
     openai                                   \
+    pillow                                   \
     pyaudio                                  \
+    pyautogui                                \
     SpeechRecognition                        \
     torch                                    \
     git+https://github.com/openai/whisper.git
@@ -29,3 +31,10 @@ eudaimon_transcribe 2>/dev/null
 ```
 
 ![](Fidel.gif)
+
+## eudaimon_image
+
+```Bash
+./eudaimon_image --image=image.png --prompt="What's in this image?"
+This image depicts a painting of a cat looking out of a window at a space scene. Outside the window, there is a view of a large planet that resembles Jupiter with its characteristic stripes, as well as a moon. There are also several large spaceships visible in space. In the foreground, next to the cat, there is a table with a glass of red liquid and a plate with some items on it, possibly food or snacks.
+```

@@ -1,0 +1,132 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+'''
+################################################################################
+#                                                                              #
+# eudaimon_image                                                               #
+#                                                                              #
+################################################################################
+#                                                                              #
+# LICENCE INFORMATION                                                          #
+#                                                                              #
+# This program uploads an image with a prompt for OpenAI analysis and returns  #
+# a text response.                                                             #
+#                                                                              #
+# copyright (C) 2024 William Breaden Madden                                    #
+#                                                                              #
+# This software is released under the terms of the GNU General Public License  #
+# version 3 (GPLv3).                                                           #
+#                                                                              #
+# This program is free software: you can redistribute it and/or modify it      #
+# under the terms of the GNU General Public License as published by the Free   #
+# Software Foundation, either version 3 of the License, or (at your option)    #
+# any later version.                                                           #
+#                                                                              #
+# This program is distributed in the hope that it will be useful, but WITHOUT  #
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or        #
+# FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for     #
+# more details.                                                                #
+#                                                                              #
+# For a copy of the GNU General Public License, see                            #
+# <http://www.gnu.org/licenses>.                                               #
+#                                                                              #
+################################################################################
+
+usage:
+    program [options]
+
+options:
+    -h, --help           display help message
+    --prompt=TEXT        prompt [default: What's in this image?]
+    --image=TEXT         prompt [default: image.png]
+'''
+
+from datetime import datetime
+import docopt
+import base64
+import os
+import requests
+import sys
+
+from openai import OpenAI
+import pyautogui
+
+__version__ = '2024-06-10T1754Z'
+
+def encode_image(image_path):
+    try:
+        with open(image_path, "rb") as image_file:
+            return base64.b64encode(image_file.read()).decode('utf-8')
+    except FileNotFoundError:
+        print(f"error: file {image_path} not found")
+        return None
+    except Exception as e:
+        print(f"error encoding image: {str(e)}")
+        return None
+
+def analyse_image(image_path="image.png", text_prompt="What's in this image?"):
+    api_key = os.getenv('OPENAI_API_KEY')
+    if not api_key:
+        print('error: OPENAI_API_KEY environment variable not set')
+        return None
+
+    base64_image = encode_image(image_path)
+    if not base64_image:
+        return None
+
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {api_key}"
+    }
+    payload = {
+        "model": "gpt-4o",
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": text_prompt
+                    },
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:image/jpeg;base64,{base64_image}"
+                        }
+                    }
+                ]
+            }
+        ],
+        "max_tokens": 300
+    }
+
+    try:
+        response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload)
+        response.raise_for_status() # Raise error for HTTP codes 4xx/5xx
+        content = response.json()['choices'][0]['message']['content']
+        return content
+    except requests.exceptions.HTTPError as http_err:
+        print(f"HTTP error occurred: {http_err}")
+    except requests.exceptions.RequestException as req_err:
+        print(f"request error occurred: {req_err}")
+    except KeyError:
+        print("unexpected response format")
+        return response.json()
+    except Exception as e:
+        print(f"error: {str(e)}")
+
+    return None
+
+def main(options=docopt.docopt(__doc__)):
+    image_path = options['--image']
+    prompt = options['--prompt']
+
+    api_key = os.getenv('OPENAI_API_KEY')
+    client = OpenAI()
+
+    result = analyse_image(image_path, prompt)
+    print(result)
+
+if __name__ == '__main__':
+    main()
