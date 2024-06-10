@@ -4,6 +4,7 @@
 
 ```Bash
 pip3 install                                 \
+    docopt                                   \
     numpy                                    \
     openai                                   \
     pillow                                   \
